@@ -86,15 +86,34 @@ class MP_REST {
 	public static function lead_capture( WP_REST_Request $request ) {
 		global $wpdb;
 
-		$quiz_id = absint( $request->get_param( 'quiz_id' ) );
-		$email   = sanitize_email( $request->get_param( 'email' ) );
-		$name    = sanitize_text_field( (string) $request->get_param( 'name' ) );
-		$step    = absint( $request->get_param( 'step' ) );
-		$answers = $request->get_param( 'answers' );
-		$partner = self::resolve_partner_id( $request );
+		$quiz_id       = absint( $request->get_param( 'quiz_id' ) );
+		$email         = sanitize_email( $request->get_param( 'email' ) );
+		$name          = sanitize_text_field( (string) $request->get_param( 'name' ) );
+		$step          = absint( $request->get_param( 'step' ) );
+		$answers       = $request->get_param( 'answers' );
+		$partner       = self::resolve_partner_id( $request );
+		$submission_id = absint( $request->get_param( 'submission_id' ) );
 
 		if ( ! $quiz_id || ! is_email( $email ) ) {
 			return new WP_Error( 'mp_invalid_lead', __( 'A valid quiz and email are required.', 'mindpulse' ), array( 'status' => 400 ) );
+		}
+
+		// Deferred email capture (structured Email Capture page shown after
+		// the quiz already submitted anonymously, e.g. after a paywall
+		// preview): attach the now-known name/email back onto that
+		// submission. Only ever fills in a blank lead_email for the same
+		// quiz — never overwrites an already-attributed submission, since
+		// this endpoint has no auth and submission_id is guessable.
+		if ( $submission_id ) {
+			$wpdb->query(
+				$wpdb->prepare(
+					"UPDATE {$wpdb->prefix}mp_submissions SET lead_name = %s, lead_email = %s WHERE id = %d AND quiz_id = %d AND ( lead_email IS NULL OR lead_email = '' )",
+					$name,
+					$email,
+					$submission_id,
+					$quiz_id
+				)
+			);
 		}
 
 		$answers_json = is_array( $answers ) ? wp_json_encode( $answers ) : null;
@@ -141,6 +160,21 @@ class MP_REST {
 				)
 			);
 			$lead_id = (int) $wpdb->insert_id;
+		}
+
+		if ( $submission_id ) {
+			$wpdb->update(
+				$table,
+				array( 'converted_submission_id' => $submission_id ),
+				array( 'id' => $lead_id )
+			);
+			$wpdb->query(
+				$wpdb->prepare(
+					"UPDATE {$wpdb->prefix}mp_submissions SET lead_id = %d WHERE id = %d AND lead_id IS NULL",
+					$lead_id,
+					$submission_id
+				)
+			);
 		}
 
 		return rest_ensure_response(
@@ -246,12 +280,15 @@ class MP_REST {
 
 		$unlocked = ! $is_premium;
 
-		$response = array(
-			'submission_id' => $submission_id,
-			'total_score'   => $result['total_score'],
-			'band'          => $unlocked ? $band : self::lock_band( $band ),
-			'is_premium'    => $is_premium,
-			'unlocked'      => $unlocked,
+		$response = array_merge(
+			self::scoring_extras( $result ),
+			array(
+				'submission_id' => $submission_id,
+				'total_score'   => $result['total_score'],
+				'band'          => $unlocked ? $band : self::lock_band( $band ),
+				'is_premium'    => $is_premium,
+				'unlocked'      => $unlocked,
+			)
 		);
 
 		if ( $is_premium ) {
@@ -259,6 +296,23 @@ class MP_REST {
 		}
 
 		return rest_ensure_response( $response );
+	}
+
+	/**
+	 * correct_count/total_questions/percent only exist in 'correct' scoring
+	 * mode (see MP_Scoring::score_correct()); omit them entirely for the
+	 * default points mode rather than sending zeros that don't mean anything.
+	 */
+	private static function scoring_extras( array $result ) {
+		if ( ! isset( $result['correct_count'] ) ) {
+			return array();
+		}
+
+		return array(
+			'correct_count'   => $result['correct_count'],
+			'total_questions' => $result['total_questions'],
+			'percent'         => $result['percent'],
+		);
 	}
 
 	/**
@@ -286,12 +340,19 @@ class MP_REST {
 		$is_premium = ! empty( $quiz_data['settings']['is_premium'] );
 		$unlocked   = ! $is_premium || 'paid' === $submission->payment_status;
 
-		$response = array(
-			'submission_id' => $id,
-			'total_score'   => (int) $submission->total_score,
-			'band'          => $unlocked ? $band : self::lock_band( $band ),
-			'is_premium'    => $is_premium,
-			'unlocked'      => $unlocked,
+		$response = array_merge(
+			self::scoring_extras( $result ),
+			array(
+				'submission_id' => $id,
+				'total_score'   => (int) $submission->total_score,
+				'band'          => $unlocked ? $band : self::lock_band( $band ),
+				'is_premium'    => $is_premium,
+				'unlocked'      => $unlocked,
+				// The visitor's own page state (name typed into the lead
+				// form) doesn't exist yet on this fresh page load, so hand
+				// their stored name back for the certificate/report.
+				'name'          => $submission->lead_name,
+			)
 		);
 
 		if ( $is_premium && ! $unlocked ) {

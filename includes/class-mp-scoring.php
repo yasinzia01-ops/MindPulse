@@ -16,9 +16,15 @@ class MP_Scoring {
 	/**
 	 * @param array $quiz_data Decoded quiz data (see MP_CPT::get_quiz_data()).
 	 * @param array $answers   Map of question_id => option_index.
-	 * @return array{total_score:int,band:array|null}
+	 * @return array{total_score:int,band:array|null,correct_count?:int,total_questions?:int,percent?:float}
 	 */
 	public static function score( array $quiz_data, array $answers ) {
+		$mode = $quiz_data['scoring_mode'] ?? 'points';
+
+		if ( 'correct' === $mode ) {
+			return self::score_correct( $quiz_data, $answers );
+		}
+
 		$total = 0;
 
 		foreach ( $quiz_data['questions'] as $question ) {
@@ -38,6 +44,37 @@ class MP_Scoring {
 		return array(
 			'total_score' => $total,
 			'band'        => $band,
+		);
+	}
+
+	/**
+	 * Correct/incorrect scoring mode: counts how many answered options are
+	 * flagged is_correct, matches bands against that count (not points).
+	 */
+	private static function score_correct( array $quiz_data, array $answers ) {
+		$correct = 0;
+		$total_questions = count( $quiz_data['questions'] );
+
+		foreach ( $quiz_data['questions'] as $question ) {
+			$qid = $question['id'];
+			if ( ! isset( $answers[ $qid ] ) ) {
+				continue;
+			}
+
+			$option_index = (int) $answers[ $qid ];
+			if ( ! empty( $question['options'][ $option_index ]['is_correct'] ) ) {
+				$correct++;
+			}
+		}
+
+		$band = self::match_band( $quiz_data['bands'], $correct );
+
+		return array(
+			'total_score'     => $correct,
+			'band'            => $band,
+			'correct_count'   => $correct,
+			'total_questions' => $total_questions,
+			'percent'         => $total_questions > 0 ? round( ( $correct / $total_questions ) * 100 ) : 0,
 		);
 	}
 

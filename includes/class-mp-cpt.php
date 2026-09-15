@@ -58,20 +58,93 @@ class MP_CPT {
 			$data = array();
 		}
 
-		return wp_parse_args(
+		$data = wp_parse_args(
 			$data,
 			array(
-				'questions' => array(),
-				'bands'     => array(),
-				'settings'  => array(
+				'questions'     => array(),
+				'sections'      => array(),
+				'bands'         => array(),
+				'scoring_mode'  => 'points',
+				'settings'      => array(
 					'lead_capture_before' => true,
 					'is_premium'          => false,
 					'price'               => 0,
 					'currency'            => 'usd',
 					'thank_you_message'   => '',
 				),
+				'intro'         => array(
+					'enabled'     => false,
+					'logo_url'    => '',
+					'title'       => '',
+					'subtitle'    => '',
+					'meta_text'   => '',
+					'tips'        => array(),
+					'button_text' => __( "Let's Start →", 'mindpulse' ),
+				),
+				'processing'    => array(
+					'enabled'         => false,
+					'title'           => __( 'Scoring your test', 'mindpulse' ),
+					'subtitle'        => '',
+					'duration_seconds' => 4,
+				),
+				'preview'       => array(
+					'enabled'             => false,
+					'headline'            => '',
+					'subheadline'         => '',
+					'locked_label'        => __( 'Estimated Score', 'mindpulse' ),
+					'benefits'            => array(),
+					'guarantee_title'     => '',
+					'guarantee_text'      => '',
+					'testimonials'        => array(),
+					'button_text'         => __( 'Unlock My Results', 'mindpulse' ),
+					'social_proof_enabled' => false,
+					'social_proof_items'  => array(),
+				),
+				'email_capture' => array(
+					'enabled'     => false,
+					'headline'    => '',
+					'subheadline' => '',
+					'stat1_label' => '',
+					'stat1_value' => '',
+					'stat2_label' => '',
+					'stat2_value' => '',
+					'button_text' => __( 'Continue', 'mindpulse' ),
+					'trust_text'  => '',
+				),
+				'checkout'      => array(
+					'headline'      => '',
+					'benefits'      => array(),
+					'price_caption' => '',
+				),
+				'report'        => array(
+					'hero_title'           => '',
+					'hero_subtitle'        => '',
+					'show_iq_style'        => false,
+					'classification_labels' => array(),
+					'certificate_enabled'  => false,
+					'certificate_title'    => __( 'Certificate of Achievement', 'mindpulse' ),
+					'disclaimer'           => '',
+				),
+				'custom_css'    => '',
 			)
 		);
+
+		// Every question belongs to a section; quizzes saved before sections
+		// existed (or with questions added outside any section) fall back to
+		// one implicit section so the frontend always has something to group by.
+		if ( empty( $data['sections'] ) && ! empty( $data['questions'] ) ) {
+			$data['sections'] = array(
+				array( 'id' => 'default', 'name' => __( 'Quiz', 'mindpulse' ) ),
+			);
+			foreach ( $data['questions'] as &$question ) {
+				if ( empty( $question['section_id'] ) ) {
+					$question['section_id'] = 'default';
+				}
+			}
+			unset( $question );
+		}
+
+		return $data;
 	}
 
 	public static function save_quiz_data( $quiz_id, array $data ) {

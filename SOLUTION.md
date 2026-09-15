@@ -8,9 +8,9 @@ Build and run personality/IQ-style quizzes on WordPress: score a respondent's an
 
 ## What works right now
 
-- **Building a quiz**: MindPulse → Forms → Add New. Add questions, give each answer option a point value, define score bands (min/max → title/description/image/CTA), toggle lead-capture-before-questions and premium (paid) results, save.
-- **Taking a quiz**: drop `[mindpulse_quiz id="X"]` on any page, or add the "MindPulse Quiz" widget in Elementor and pick the quiz. The visitor steps through questions one at a time; if lead capture is on, they give name/email first.
-- **Getting a result**: on the last question, the plugin scores the answers, matches a band, and shows that band's title/description/image/CTA. If the quiz is premium and unpaid, the visitor sees a paywall with a Stripe Checkout link instead of the full description.
+- **Building a quiz**: MindPulse → Forms → Add New, a 9-tab editor: Form Details, Test Introduction, Test Sections, Processing Page, Preview Page, Email Capture, Checkout Page, Report Settings, Custom CSS. Group questions into sections, give each option either a point value or a "Correct answer" flag (pick per-quiz under Form Details → Scoring Mode), define score bands (min/max → title/description/image/CTA), and optionally turn on any of the structured funnel pages below.
+- **Taking a quiz**: drop `[mindpulse_quiz id="X"]` on any page, or add the "MindPulse Quiz" widget in Elementor and pick the quiz. If Test Introduction is on, the visitor sees an intro screen first; then questions one at a time (grouped by section); then, if Processing Page is on, a brief animated "scoring" screen.
+- **Getting a result**: the plugin scores the answers, matches a band, and shows a report (hero title/subtitle, band title/description/image/CTA, and — if turned on in Report Settings — an IQ-style number/percentile display and a certificate). If the quiz is premium and unpaid, the visitor sees the Preview page (headline, benefits, testimonials, an optional rotating "someone just unlocked..." notice) instead, then — if Email Capture is on — a structured lead form, then the Checkout page with the real Stripe Checkout link.
 - **Abandon recovery**: the moment a visitor's email is captured (either up front, or the first time they'd be asked for it), a lead row is saved along with their answers so far. If they never finish, MindPulse → Abandon Emails' cron sends up to N recovery emails after a configurable delay, with a resume link that restores their name, email, in-progress answers, and step — they pick up where they left off, not from question 1.
 - **Payments**: Stripe Checkout Session created via direct REST calls (no Stripe SDK). Webhook confirms payment and unlocks the submission. Configure keys under Settings.
 - **B2B embeds**: MindPulse → B2B Embed → Create Partner gives an API key and a `<script>` snippet partners paste on their own site; it iframes the quiz and tags resulting submissions with that partner.
@@ -37,7 +37,9 @@ Activated on a real (local Docker) WordPress 7.1 + Elementor 4.2 install, not ju
 
 - Brain Games is a stub: one title + one embed URL per game, nothing scored. It's a placeholder for a distinct product surface, not a mini-game engine.
 - Only Stripe is wired up as a payment gateway. Adding another means implementing `MP_Payment_Gateway` — the REST/admin layers don't need to change.
-- No CSV export, no automated tests, no CI/release pipeline yet.
+- No automated tests yet.
+- **The Report page's IQ-style number/percentile and the Preview page's rotating "just unlocked..." notice are styled to look more scientific/live than they are.** The number is a statistical transform of this quiz's own raw score (not a validated psychometric result), and the notice is illustrative example copy the admin types in themselves (not real visitor activity). Built this way at your explicit request — keep the Report Settings → Disclaimer field filled in.
+- Report Settings has no per-dimension chart breakdown (a 6-category radar/bar chart, like some reference IQ-test funnels show) — this quiz's scoring produces one aggregate score, not independently measured sub-scores, so a breakdown would have to be fabricated. Left out on purpose; revisit if the scoring engine grows real per-category sub-scores.
 
 ## Where the code lives
 

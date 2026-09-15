@@ -2,7 +2,18 @@
 
 Running log for the autonomous loop (`RALPH_LOOP.md`) and for humans picking this project back up. Newest entry on top. Each iteration of the loop should append one entry here before stopping, even if the entry is "no changes needed."
 
-## Status: v1 verified end-to-end on a local WordPress + Elementor install
+## Status: v1 verified end-to-end on a local WordPress + Elementor install; v2 full-funnel builder (intro/sections/processing/preview/email-capture/checkout/report/custom-CSS + correct-answer scoring) added and verified on the same harness
+
+## Done (this pass — full funnel builder)
+
+- [x] **Extended `_mp_quiz_data` schema** (`includes/class-mp-cpt.php`) with `scoring_mode`, `sections` (question grouping metadata), and structured `intro`/`processing`/`preview`/`email_capture`/`checkout`/`report`/`custom_css` blocks — all optional with safe defaults, so every existing quiz keeps working unchanged.
+- [x] **Correct/Incorrect scoring mode** (`includes/class-mp-scoring.php`) alongside the original points mode — each option now carries both a `points` value and an `is_correct` flag; the quiz picks which one matters via `scoring_mode`.
+- [x] **Tabbed admin editor** (`admin/views/forms-edit.php`, `public/js/quiz-builder.js`, `public/css/admin.css`) — 9 tabs (Form Details, Test Introduction, Test Sections, Processing Page, Preview Page, Email Capture, Checkout Page, Report Settings, Custom CSS), sections with nested question/option cards, and repeatable-list widgets (tips, benefits, testimonials, social-proof entries, classification labels) — all structured fields, no raw-HTML blobs. Still saves as one JSON blob via the existing `mp_save_quiz` handler — no backend changes needed there.
+- [x] **New frontend stage machine** (`public/js/quiz-runner.js`): Intro → (lead capture) → Questions (grouped by section) → Processing (animated) → submit →, if premium and locked, Preview (with an optional rotating social-proof notice) → Email Capture (deferred, structured) → Checkout, else straight to Report (band + optional IQ-style number/percentile + certificate + disclaimer). Every stage is opt-in per-quiz; a quiz with none of them enabled runs exactly like the original flat flow (regression-tested).
+- [x] **Fixed a real attribution gap found during testing**: when email is captured *after* the quiz already scored anonymously (the new deferred Email Capture stage), the submission row stayed unlinked to the lead. `MP_REST::lead_capture()` now accepts an optional `submission_id` and attaches the now-known name/email back onto that submission (only ever filling a blank `lead_email`, never overwriting an already-attributed one).
+- [x] **Custom CSS** injected per-quiz via `MP_Shortcode::render_quiz()` (`public/class-mp-shortcode.php`), scoped by a `.mp-quiz-custom-{quiz_id}` class on the container for the admin to target themselves.
+- [x] Verified live (same Docker WP+Elementor+Playwright harness as the v1 pass): built a full-featured premium quiz through the new 9-tab editor (correct-answer scoring, 2 sections, intro tips, processing animation, preview with rotating social proof + testimonials, deferred email capture, checkout, IQ-style report + certificate, custom CSS), saved and confirmed the JSON round-trips exactly, then clicked through the entire visitor funnel in a real browser end to end with zero PHP warnings/notices and zero JS console errors — including the return-from-Stripe path (marked paid via DB, reloaded via `?mp_submission=`, confirmed the report unlocks with the correct name on the certificate). Also re-ran a plain legacy quiz (no new features enabled) to confirm the regression path is unaffected.
+- [x] Two bugs found and fixed *during* this build (not carried over from before): a stray early `return` in `quiz-builder.js`'s `addSection()` that silently dropped every section from the DOM, and the pre-existing "ask for email right after questions" fallback in `quiz-runner.js` firing even when the new deferred Email Capture stage was meant to handle it.
 
 ## Done
 
@@ -39,7 +50,9 @@ Spun up an isolated WordPress 7.1 + MySQL 8 stack in Docker (`docker-compose.tes
 - [ ] No automated tests (no PHPUnit scaffold, no JS tests).
 - [ ] Elementor widget's `get_quiz_options()` re-queries all quizzes on every editor render — fine at small scale, revisit if quiz count grows.
 - [ ] Brain Games is intentionally minimal (see BLUEPRINT.md) — revisit only if the user asks for more than a single embed URL per game.
-- [ ] The release workflow (`.github/workflows/release.yml`) has not actually been exercised (no tag pushed yet) — first tag push (`git tag v1.0.0 && git push --tags`) should be treated as a test of it, not an assumption it works.
+- [x] The release workflow was exercised for real: `v1.0.0` initially failed (403 — the workflow never declared `contents: write`, so the default `GITHUB_TOKEN` couldn't create the Release under this repo's token defaults); fixed and re-verified via `v1.0.1`, whose zip was downloaded and its contents checked (correct root folder, forward-slash paths). See https://github.com/yasinzia01-ops/MindPulse/releases/tag/v1.0.1.
+- [ ] **Report page's IQ-style number/percentile and the rotating social-proof notice are deliberately styled to look more scientific/live than they are** (a statistical transform of this quiz's own raw score, and illustrative example copy the admin writes — not real visitor data or a validated psychometric result). Built at the user's explicit request after flagging the concern; the same honest disclaimer text field the reference material used is included and should stay filled in.
+- [ ] Report Settings intentionally has no per-dimension chart breakdown (the sample's 6 independently-scored cognitive-dimension bars) — this quiz's scoring produces one aggregate score/band, not independently measured sub-scores, and fabricating a breakdown not backed by real sub-scores would go a step further than what was asked for. Revisit only if the scoring engine grows real per-category sub-scores.
 
 ## Done (this pass)
 

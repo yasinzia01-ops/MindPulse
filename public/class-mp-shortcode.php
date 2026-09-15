@@ -47,7 +47,12 @@ class MP_Shortcode {
 
 		ob_start();
 		?>
-		<div class="mp-quiz"
+		<?php if ( ! empty( $data['custom_css'] ) ) : ?>
+			<style>
+				<?php echo wp_strip_all_tags( $data['custom_css'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- admin-only (manage_options) authored CSS, same trust level as the other rich text fields on this form. ?>
+			</style>
+		<?php endif; ?>
+		<div class="mp-quiz mp-quiz-custom-<?php echo esc_attr( $quiz_id ); ?>"
 			data-quiz-id="<?php echo esc_attr( $quiz_id ); ?>"
 			data-partner-key="<?php echo esc_attr( $partner_key ); ?>"
 			data-quiz='<?php echo esc_attr( wp_json_encode( $data ) ); ?>'>

@@ -8,11 +8,21 @@ A WordPress plugin for building personality/IQ-style quizzes with point-band sco
 
 ## Scoring model
 
-Point total → band. Each answer option carries a point value; the sum of selected options is the total score, matched against admin-defined `[min, max]` score bands, each tied to a result profile (title, description, image, CTA).
+Two scoring modes, selected per-quiz via `scoring_mode` ('points' | 'correct'):
+- **Points** (default/legacy): each answer option carries a point value; the sum of selected options is the total score.
+- **Correct/Incorrect**: each option carries an `is_correct` flag instead; the total score is the count of correct answers. Used for IQ/aptitude-style quizzes.
+
+Either way, the total score is matched against admin-defined `[min, max]` score bands (`MP_Scoring::match_band()`), each tied to a result profile (title, description, image, CTA). See `includes/class-mp-scoring.php`.
+
+## Funnel pages (all optional, per-quiz)
+
+Beyond the core question flow, a quiz can enable any combination of structured funnel pages, each with its own admin tab (`admin/views/forms-edit.php`) and JSON block in `_mp_quiz_data`: `intro`, `sections` (question grouping), `processing` (animated scoring screen), `preview` (paywall teaser, with an optional rotating social-proof notice — illustrative example copy the admin writes, not real visitor data), `email_capture` (structured lead form shown post-preview instead of the plain pre-questions one), `checkout` (copy shown right before the Stripe redirect), `report` (full result page, optionally with an IQ-style number/percentile transform of the raw score and a certificate block), and `custom_css`. None of this changes the request flow below — it only adds stages before/after `submit`/`payment/webhook`, all driven client-side by `public/js/quiz-runner.js`. A quiz with none of these enabled behaves exactly like the original flat flow.
+
+When email is captured *after* `/submit` (the deferred email-capture path, `email_capture` stage), the frontend passes `submission_id` back to `/lead-capture` so `MP_REST::lead_capture()` can attach the now-known name/email onto that already-scored (previously anonymous) submission — otherwise it would stay unattributed in MindPulse → Users.
 
 ## Data storage
 
-- CPT `mp_quiz` — one post per quiz. Questions/options/points/bands/settings live as JSON in post meta `_mp_quiz_data` (`MP_CPT::get_quiz_data()` / `save_quiz_data()`).
+- CPT `mp_quiz` — one post per quiz. Questions/options/points/bands/settings/funnel-pages live as JSON in post meta `_mp_quiz_data` (`MP_CPT::get_quiz_data()` / `save_quiz_data()`). Questions are stored flat with a `section_id`; `sections` is separate `{id,name}` metadata used only for grouping/display.
 - CPT `mp_game` — Brain Games entries (title + embed URL in `_mp_game_embed_url`).
 - Table `wp_mp_submissions` — completed attempts: quiz_id, lead name/email, answers (JSON), total_score, band_key, profile_title, payment_status, partner_id, lead_id, created_at.
 - Table `wp_mp_leads` — partial/abandoned attempts: quiz_id, lead name/email, last_step, answers (JSON, kept in sync on every step so a resume restores mid-quiz progress), partner_id, converted_submission_id, recovery_emails_sent, last_email_sent_at, resume_token.

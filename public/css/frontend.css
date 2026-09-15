@@ -77,3 +77,271 @@
 .mp-quiz__error {
 	color: #dc2626;
 }
+
+/* ---------------- Intro ---------------- */
+
+.mp-quiz__intro {
+	text-align: center;
+}
+
+.mp-quiz__intro-logo {
+	max-width: 160px;
+	margin: 0 auto 16px;
+	display: block;
+}
+
+.mp-quiz__intro-subtitle,
+.mp-quiz__intro-meta {
+	color: #6b7280;
+	margin: 0 0 10px;
+}
+
+.mp-quiz__intro-tips {
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+	flex-wrap: wrap;
+	margin: 16px 0 24px;
+}
+
+.mp-quiz__intro-tip {
+	background: #f8f8ff;
+	border: 1px solid #f0f1ff;
+	border-radius: 12px;
+	padding: 12px 16px;
+	font-size: 13px;
+	max-width: 160px;
+}
+
+/* ---------------- Processing ---------------- */
+
+.mp-quiz__processing {
+	text-align: center;
+}
+
+.mp-quiz__processing-bar {
+	height: 8px;
+	background: #eef2ff;
+	border-radius: 999px;
+	overflow: hidden;
+	margin: 16px 0 8px;
+}
+
+.mp-quiz__processing-fill {
+	height: 100%;
+	width: 0;
+	background: #4f46e5;
+	transition: width 0.15s linear;
+}
+
+.mp-quiz__processing-pct {
+	color: #6b7280;
+	font-size: 13px;
+}
+
+/* ---------------- Preview / paywall ---------------- */
+
+.mp-quiz__social-proof {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 14px;
+	border-radius: 999px;
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	font-size: 12px;
+	margin-bottom: 16px;
+}
+
+.mp-quiz__preview {
+	text-align: center;
+}
+
+.mp-quiz__preview-sub {
+	color: #6b7280;
+}
+
+.mp-quiz__preview-locked {
+	background: repeating-radial-gradient(circle at 1px 1px, #d7dae6 1px, transparent 1.6px) 0 0 / 18px 18px;
+	border-radius: 16px;
+	padding: 28px;
+	margin: 20px 0;
+}
+
+.mp-quiz__preview-locked-label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: #9aa1bb;
+	margin: 0 0 10px;
+}
+
+.mp-quiz__preview-locked-icon {
+	font-size: 28px;
+}
+
+.mp-quiz__benefits {
+	list-style: none;
+	padding: 0;
+	margin: 0 0 20px;
+	text-align: left;
+}
+
+.mp-quiz__benefits li {
+	padding: 6px 0;
+}
+
+.mp-quiz__benefits li::before {
+	content: '\2713';
+	color: #4f46e5;
+	font-weight: 700;
+	margin-right: 8px;
+}
+
+.mp-quiz__guarantee {
+	background: #f0fbf3;
+	border: 1px solid #d7f0dd;
+	border-radius: 12px;
+	padding: 14px 16px;
+	margin-top: 16px;
+	text-align: left;
+}
+
+.mp-quiz__guarantee-title {
+	font-weight: 700;
+	margin: 0 0 4px;
+}
+
+.mp-quiz__testimonials {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 20px;
+	text-align: left;
+}
+
+.mp-quiz__testimonial {
+	background: #f9fafb;
+	border-radius: 10px;
+	padding: 12px 14px;
+	font-size: 13px;
+}
+
+.mp-quiz__testimonial-name {
+	font-weight: 600;
+	color: #6b7280;
+	margin-top: 6px;
+}
+
+/* ---------------- Email capture (structured) ---------------- */
+
+.mp-quiz__ec-sub {
+	color: #6b7280;
+}
+
+.mp-quiz__ec-stats {
+	display: flex;
+	gap: 10px;
+	margin: 12px 0 16px;
+}
+
+.mp-quiz__ec-stat {
+	flex: 1;
+	background: #f8f8ff;
+	border-radius: 10px;
+	padding: 10px 12px;
+	display: flex;
+	flex-direction: column;
+}
+
+.mp-quiz__ec-stat-label {
+	font-size: 11px;
+	color: #9aa1bb;
+	text-transform: uppercase;
+}
+
+.mp-quiz__ec-stat-value {
+	font-weight: 700;
+}
+
+.mp-quiz__ec-trust {
+	font-size: 11px;
+	color: #9aa1bb;
+	margin-top: 12px;
+}
+
+/* ---------------- Checkout ---------------- */
+
+.mp-quiz__checkout-caption {
+	font-size: 12px;
+	color: #9aa1bb;
+	margin-top: 10px;
+}
+
+/* ---------------- Report ---------------- */
+
+.mp-quiz__hero-subtitle {
+	color: #6b7280;
+}
+
+.mp-quiz__iq-box {
+	text-align: center;
+	background: #f8f8ff;
+	border-radius: 16px;
+	padding: 24px;
+	margin: 16px 0;
+}
+
+.mp-quiz__iq-number {
+	font-size: 44px;
+	font-weight: 800;
+}
+
+.mp-quiz__iq-label {
+	font-size: 12px;
+	text-transform: uppercase;
+	color: #6b7280;
+}
+
+.mp-quiz__iq-classification {
+	display: inline-block;
+	margin-top: 8px;
+	padding: 4px 12px;
+	border-radius: 999px;
+	background: #eef2ff;
+	color: #4f46e5;
+	font-weight: 700;
+	font-size: 13px;
+}
+
+.mp-quiz__iq-percentile {
+	color: #6b7280;
+	margin-top: 8px;
+}
+
+.mp-quiz__certificate {
+	border: 3px solid #ded9ff;
+	border-radius: 14px;
+	padding: 24px;
+	margin: 20px 0;
+	text-align: center;
+}
+
+.mp-quiz__certificate-title {
+	font-size: 11px;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+	color: #4f46e5;
+}
+
+.mp-quiz__certificate-name {
+	font-size: 22px;
+	font-weight: 700;
+	margin: 8px 0;
+}
+
+.mp-quiz__disclaimer {
+	font-size: 11px;
+	color: #9aa1bb;
+	margin-top: 16px;
+}
