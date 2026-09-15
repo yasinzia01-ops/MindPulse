@@ -32,6 +32,25 @@
 		} );
 	}
 
+	function apiGet( path, params ) {
+		var query = Object.keys( params )
+			.map( function ( key ) {
+				return encodeURIComponent( key ) + '=' + encodeURIComponent( params[ key ] );
+			} )
+			.join( '&' );
+
+		return fetch( MindPulseConfig.restUrl + path + '?' + query, {
+			headers: { 'X-WP-Nonce': MindPulseConfig.nonce },
+		} ).then( function ( res ) {
+			return res.json();
+		} );
+	}
+
+	function getUrlParam( name ) {
+		var match = new RegExp( '[?&]' + name + '=([^&]*)' ).exec( window.location.search );
+		return match ? decodeURIComponent( match[ 1 ].replace( /\+/g, ' ' ) ) : '';
+	}
+
 	function initQuiz( container ) {
 		var quizId = container.getAttribute( 'data-quiz-id' );
 		var partnerKey = container.getAttribute( 'data-partner-key' ) || '';
@@ -53,7 +72,36 @@
 
 		var leadCaptureFirst = !! ( quiz.settings && quiz.settings.lead_capture_before );
 
-		render();
+		maybeResume();
+
+		function maybeResume() {
+			var resumeToken = getUrlParam( 'mp_resume' );
+			var resumeQuizId = getUrlParam( 'mp_quiz' );
+
+			if ( ! resumeToken || String( resumeQuizId ) !== String( quizId ) ) {
+				render();
+				return;
+			}
+
+			container.innerHTML = '<div class="mp-quiz__loading">Resuming your quiz…</div>';
+
+			apiGet( '/resume', { token: resumeToken, quiz_id: quizId } ).then( function ( res ) {
+				if ( ! res || res.code ) {
+					render();
+					return;
+				}
+
+				state.leadId = res.lead_id;
+				state.name = res.name || '';
+				state.email = res.email || '';
+				state.answers = res.answers || {};
+				state.step = res.last_step || 0;
+
+				render();
+			} ).catch( function () {
+				render();
+			} );
+		}
 
 		function render() {
 			container.innerHTML = '';
@@ -87,12 +135,14 @@
 			nameInput.type = 'text';
 			nameInput.placeholder = 'Your name';
 			nameInput.className = 'mp-input mp-input--name';
+			nameInput.value = state.name || '';
 
 			var emailInput = el( 'input' );
 			emailInput.type = 'email';
 			emailInput.placeholder = 'Your email';
 			emailInput.required = true;
 			emailInput.className = 'mp-input mp-input--email';
+			emailInput.value = state.email || '';
 
 			var button = el( 'button', 'mp-btn mp-btn--primary', 'Start' );
 			button.type = 'button';
@@ -149,6 +199,7 @@
 				name: state.name,
 				email: state.email,
 				step: state.step,
+				answers: state.answers,
 				partner_key: partnerKey,
 			} ).then( function ( res ) {
 				if ( res && res.lead_id ) {

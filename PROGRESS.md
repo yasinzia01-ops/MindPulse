@@ -23,14 +23,19 @@ Running log for the autonomous loop (`RALPH_LOOP.md`) and for humans picking thi
 
 ## Not yet done / next up
 
-- [ ] **Never activated on a real WordPress install.** No confirmation that `dbDelta` produces the tables cleanly, that activation doesn't fatal, or that the admin pages render without notices/warnings under a real WP + Elementor environment.
+- [ ] **Never activated on a real WordPress install.** No confirmation that `dbDelta` produces the tables cleanly, that activation doesn't fatal, or that the admin pages render without notices/warnings under a real WP + Elementor environment. This is the top-priority item once a site is available.
 - [ ] No automated tests (no PHPUnit scaffold, no JS tests).
 - [ ] Elementor widget's `get_quiz_options()` re-queries all quizzes on every editor render — fine at small scale, revisit if quiz count grows.
-- [ ] Resume-token flow (`?mp_resume=TOKEN&mp_quiz=ID` built in `MP_Cron::send_recovery_email()`) is generated but the frontend JS never reads/consumes it — clicking a recovery email link currently just opens the quiz from question 1, not mid-quiz. Either wire it up or document it as "restarts the quiz."
-- [ ] No CSV export on the Users list (mentioned as a nice-to-have during planning, not built).
-- [ ] No GitHub Actions workflow to build/attach a release `.zip` on tag push.
 - [ ] Brain Games is intentionally minimal (see BLUEPRINT.md) — revisit only if the user asks for more than a single embed URL per game.
-- [ ] `MP_Gateway_Stripe::signature_is_valid()` webhook check only runs if a webhook secret is configured; if the user skips that Settings field, webhooks are accepted unverified. Consider refusing webhook calls outright when no secret is set, instead of silently trusting them.
+- [ ] The release workflow (`.github/workflows/release.yml`) has not actually been exercised (no tag pushed yet) — first tag push (`git tag v1.0.0 && git push --tags`) should be treated as a test of it, not an assumption it works.
+
+## Done (this pass)
+
+- [x] **Resume-token flow wired up end to end.** `wp_mp_leads` now has an `answers` column; `/lead-capture` accepts and stores in-progress answers on every step; a new `GET /wp-json/mindpulse/v1/resume?token=&quiz_id=` endpoint (`MP_REST::resume`) looks up an unconverted lead by its resume token; `quiz-runner.js` checks `?mp_resume=&mp_quiz=` on load and restores name/email/answers/step before rendering, instead of restarting from question 1.
+- [x] **Stripe webhook hardened.** `MP_Gateway_Stripe::verify_webhook()` now refuses any webhook call outright when no signing secret is configured in Settings, instead of silently accepting unsigned payloads.
+- [x] **CSV export added** to MindPulse → Users ("Export CSV" button, nonce-protected `admin-post` handler streaming all submissions).
+- [x] **Release workflow added** (`.github/workflows/release.yml`) — builds the zip with `zip` on the Ubuntu runner (forward-slash paths, unlike PowerShell's `Compress-Archive`) and attaches it to a GitHub Release on any `v*` tag push.
+- [x] `MP_DB_VERSION` bump + an upgrade check on `plugins_loaded` (`mp_init`) so schema changes like the new `answers` column apply without requiring deactivate/reactivate.
 
 ## How to verify after an activation attempt
 

@@ -15,7 +15,7 @@ Point total → band. Each answer option carries a point value; the sum of selec
 - CPT `mp_quiz` — one post per quiz. Questions/options/points/bands/settings live as JSON in post meta `_mp_quiz_data` (`MP_CPT::get_quiz_data()` / `save_quiz_data()`).
 - CPT `mp_game` — Brain Games entries (title + embed URL in `_mp_game_embed_url`).
 - Table `wp_mp_submissions` — completed attempts: quiz_id, lead name/email, answers (JSON), total_score, band_key, profile_title, payment_status, partner_id, lead_id, created_at.
-- Table `wp_mp_leads` — partial/abandoned attempts: quiz_id, lead name/email, last_step, partner_id, converted_submission_id, recovery_emails_sent, last_email_sent_at, resume_token.
+- Table `wp_mp_leads` — partial/abandoned attempts: quiz_id, lead name/email, last_step, answers (JSON, kept in sync on every step so a resume restores mid-quiz progress), partner_id, converted_submission_id, recovery_emails_sent, last_email_sent_at, resume_token.
 - Table `wp_mp_payments` — gateway, transaction_id, submission_id, amount, currency, status.
 - Table `wp_mp_partners` — B2B clients: name, api_key, allowed_quiz_ids, status.
 
@@ -25,10 +25,10 @@ Schema lives in `includes/class-mp-db.php::create_tables()` (dbDelta). Bumping `
 
 1. Frontend renders `.mp-quiz` container (shortcode `class-mp-shortcode.php` or Elementor `class-mp-elementor-widget.php`), both calling `MP_Shortcode::render_quiz()`.
 2. `public/js/quiz-runner.js` steps through lead capture → questions → submit.
-3. `POST /wp-json/mindpulse/v1/lead-capture` (`MP_REST::lead_capture`) upserts a `wp_mp_leads` row as soon as an email exists — this is what powers abandon recovery.
+3. `POST /wp-json/mindpulse/v1/lead-capture` (`MP_REST::lead_capture`) upserts a `wp_mp_leads` row as soon as an email exists, including the answers collected so far — this is what powers abandon recovery.
 4. `POST /wp-json/mindpulse/v1/submit` (`MP_REST::submit`) scores via `MP_Scoring::score()`, writes `wp_mp_submissions`, marks the lead converted, and — if the quiz is premium — calls `MP_Payments::create_checkout()`.
-5. Stripe webhook `POST /wp-json/mindpulse/v1/payment/webhook` → `MP_Payments::handle_webhook()` marks the submission/payment paid.
-6. `mp_abandon_email_cron` (every 15 min, `MP_Cron::process_abandoned_leads()`) emails unconverted leads past the configured delay, up to N times.
+5. Stripe webhook `POST /wp-json/mindpulse/v1/payment/webhook` → `MP_Payments::handle_webhook()` marks the submission/payment paid. Refuses to process anything unless `mp_settings_stripe_webhook_secret` is set and the signature verifies.
+6. `mp_abandon_email_cron` (every 15 min, `MP_Cron::process_abandoned_leads()`) emails unconverted leads past the configured delay, up to N times, linking to `?mp_resume=TOKEN&mp_quiz=ID`. `GET /wp-json/mindpulse/v1/resume` (`MP_REST::resume`) resolves that token back to the lead's name/email/answers/step; `quiz-runner.js` reads those URL params on load and restores the in-progress state instead of restarting from question 1.
 7. B2B: `MP_Embed::embed_script()` served at `?mp_embed_js=1` iframes `?mp_embed_quiz=ID&mp_partner_key=KEY`, handled by `MP_Shortcode::maybe_render_embed_page()` on `template_redirect`; the partner key tags resulting rows with `partner_id`.
 
 ## Admin

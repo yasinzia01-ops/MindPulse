@@ -29,6 +29,20 @@ class MP_REST {
 
 		register_rest_route(
 			'mindpulse/v1',
+			'/resume',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'resume' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'token'   => array( 'required' => true ),
+					'quiz_id' => array( 'required' => true ),
+				),
+			)
+		);
+
+		register_rest_route(
+			'mindpulse/v1',
 			'/submit',
 			array(
 				'methods'             => 'POST',
@@ -63,18 +77,21 @@ class MP_REST {
 		$email   = sanitize_email( $request->get_param( 'email' ) );
 		$name    = sanitize_text_field( (string) $request->get_param( 'name' ) );
 		$step    = absint( $request->get_param( 'step' ) );
+		$answers = $request->get_param( 'answers' );
 		$partner = self::resolve_partner_id( $request );
 
 		if ( ! $quiz_id || ! is_email( $email ) ) {
 			return new WP_Error( 'mp_invalid_lead', __( 'A valid quiz and email are required.', 'mindpulse' ), array( 'status' => 400 ) );
 		}
 
+		$answers_json = is_array( $answers ) ? wp_json_encode( $answers ) : null;
+
 		$table = MP_DB::leads_table();
 		$now   = current_time( 'mysql' );
 
 		$existing_id = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT id FROM {$table} WHERE quiz_id = %d AND lead_email = %s AND converted_submission_id IS NULL ORDER BY id DESC LIMIT 1",
+				"SELECT id, resume_token FROM {$table} WHERE quiz_id = %d AND lead_email = %s AND converted_submission_id IS NULL ORDER BY id DESC LIMIT 1",
 				$quiz_id,
 				$email
 			)
@@ -84,31 +101,82 @@ class MP_REST {
 			$wpdb->update(
 				$table,
 				array(
-					'lead_name' => $name,
-					'last_step' => $step,
+					'lead_name'  => $name,
+					'last_step'  => $step,
+					'answers'    => $answers_json,
 					'updated_at' => $now,
 				),
 				array( 'id' => $existing_id )
 			);
-			$lead_id = (int) $existing_id;
+			$lead_id      = (int) $existing_id;
+			$resume_token = $wpdb->get_var( $wpdb->prepare( "SELECT resume_token FROM {$table} WHERE id = %d", $lead_id ) );
 		} else {
+			$resume_token = wp_generate_password( 20, false );
+
 			$wpdb->insert(
 				$table,
 				array(
-					'quiz_id'    => $quiz_id,
-					'lead_name'  => $name,
-					'lead_email' => $email,
-					'last_step'  => $step,
-					'partner_id' => $partner,
-					'resume_token' => wp_generate_password( 20, false ),
-					'created_at' => $now,
-					'updated_at' => $now,
+					'quiz_id'      => $quiz_id,
+					'lead_name'    => $name,
+					'lead_email'   => $email,
+					'last_step'    => $step,
+					'answers'      => $answers_json,
+					'partner_id'   => $partner,
+					'resume_token' => $resume_token,
+					'created_at'   => $now,
+					'updated_at'   => $now,
 				)
 			);
 			$lead_id = (int) $wpdb->insert_id;
 		}
 
-		return rest_ensure_response( array( 'lead_id' => $lead_id ) );
+		return rest_ensure_response(
+			array(
+				'lead_id'      => $lead_id,
+				'resume_token' => $resume_token,
+			)
+		);
+	}
+
+	/**
+	 * Looks up an in-progress (unconverted) lead by its resume token so
+	 * the frontend can restore name/email/answers/step instead of
+	 * restarting the quiz from the abandon-email link.
+	 */
+	public static function resume( WP_REST_Request $request ) {
+		global $wpdb;
+
+		$token   = sanitize_text_field( (string) $request->get_param( 'token' ) );
+		$quiz_id = absint( $request->get_param( 'quiz_id' ) );
+
+		if ( ! $token || ! $quiz_id ) {
+			return new WP_Error( 'mp_invalid_resume', __( 'A valid resume link is required.', 'mindpulse' ), array( 'status' => 400 ) );
+		}
+
+		$table = MP_DB::leads_table();
+		$lead  = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$table} WHERE resume_token = %s AND quiz_id = %d AND converted_submission_id IS NULL LIMIT 1",
+				$token,
+				$quiz_id
+			)
+		);
+
+		if ( ! $lead ) {
+			return new WP_Error( 'mp_resume_not_found', __( 'This quiz session could not be found or was already completed.', 'mindpulse' ), array( 'status' => 404 ) );
+		}
+
+		$answers = json_decode( (string) $lead->answers, true );
+
+		return rest_ensure_response(
+			array(
+				'lead_id'   => (int) $lead->id,
+				'name'      => $lead->lead_name,
+				'email'     => $lead->lead_email,
+				'last_step' => (int) $lead->last_step,
+				'answers'   => is_array( $answers ) ? $answers : array(),
+			)
+		);
 	}
 
 	/**

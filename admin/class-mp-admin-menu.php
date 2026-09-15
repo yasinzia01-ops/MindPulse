@@ -20,6 +20,7 @@ class MP_Admin_Menu {
 		add_action( 'admin_post_mp_save_settings', array( __CLASS__, 'handle_save_settings' ) );
 		add_action( 'admin_post_mp_create_partner', array( __CLASS__, 'handle_create_partner' ) );
 		add_action( 'admin_post_mp_save_game', array( __CLASS__, 'handle_save_game' ) );
+		add_action( 'admin_post_mp_export_submissions_csv', array( __CLASS__, 'handle_export_submissions_csv' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 	}
 
@@ -223,6 +224,43 @@ class MP_Admin_Menu {
 		}
 
 		wp_safe_redirect( admin_url( 'admin.php?page=mindpulse-brain-games&saved=1' ) );
+		exit;
+	}
+
+	public static function handle_export_submissions_csv() {
+		if ( ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'mp_export_csv' ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'mindpulse' ) );
+		}
+
+		global $wpdb;
+		$table = MP_DB::submissions_table();
+		$rows  = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id DESC", ARRAY_A );
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=mindpulse-submissions-' . gmdate( 'Y-m-d' ) . '.csv' );
+
+		$out = fopen( 'php://output', 'w' );
+		fputcsv( $out, array( 'ID', 'Name', 'Email', 'Quiz', 'Score', 'Result Profile', 'Payment Status', 'Partner ID', 'Date' ) );
+
+		foreach ( $rows as $row ) {
+			fputcsv(
+				$out,
+				array(
+					$row['id'],
+					$row['lead_name'],
+					$row['lead_email'],
+					get_the_title( $row['quiz_id'] ),
+					$row['total_score'],
+					$row['profile_title'],
+					$row['payment_status'],
+					$row['partner_id'],
+					$row['created_at'],
+				)
+			);
+		}
+
+		fclose( $out );
 		exit;
 	}
 }

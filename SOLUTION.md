@@ -11,10 +11,11 @@ Build and run personality/IQ-style quizzes on WordPress: score a respondent's an
 - **Building a quiz**: MindPulse → Forms → Add New. Add questions, give each answer option a point value, define score bands (min/max → title/description/image/CTA), toggle lead-capture-before-questions and premium (paid) results, save.
 - **Taking a quiz**: drop `[mindpulse_quiz id="X"]` on any page, or add the "MindPulse Quiz" widget in Elementor and pick the quiz. The visitor steps through questions one at a time; if lead capture is on, they give name/email first.
 - **Getting a result**: on the last question, the plugin scores the answers, matches a band, and shows that band's title/description/image/CTA. If the quiz is premium and unpaid, the visitor sees a paywall with a Stripe Checkout link instead of the full description.
-- **Abandon recovery**: the moment a visitor's email is captured (either up front, or the first time they'd be asked for it), a lead row is saved. If they never finish, MindPulse → Abandon Emails' cron sends up to N recovery emails after a configurable delay, with a link back to the quiz.
+- **Abandon recovery**: the moment a visitor's email is captured (either up front, or the first time they'd be asked for it), a lead row is saved along with their answers so far. If they never finish, MindPulse → Abandon Emails' cron sends up to N recovery emails after a configurable delay, with a resume link that restores their name, email, in-progress answers, and step — they pick up where they left off, not from question 1.
 - **Payments**: Stripe Checkout Session created via direct REST calls (no Stripe SDK). Webhook confirms payment and unlocks the submission. Configure keys under Settings.
 - **B2B embeds**: MindPulse → B2B Embed → Create Partner gives an API key and a `<script>` snippet partners paste on their own site; it iframes the quiz and tags resulting submissions with that partner.
-- **Reviewing results**: MindPulse → Users lists every submission with score/profile/payment status; MindPulse → Payments lists transactions.
+- **Reviewing results**: MindPulse → Users lists every submission with score/profile/payment status, with a one-click CSV export; MindPulse → Payments lists transactions.
+- **Releases**: pushing a `v*` git tag triggers a GitHub Actions workflow that builds the installable zip correctly (forward-slash paths — no PowerShell `Compress-Archive` pitfall) and attaches it to a GitHub Release.
 
 ## What "done" does not mean here
 

@@ -64,6 +64,7 @@ class MP_DB {
 			lead_name VARCHAR(191) DEFAULT '',
 			lead_email VARCHAR(191) DEFAULT '',
 			last_step INT NOT NULL DEFAULT 0,
+			answers LONGTEXT NULL,
 			partner_id BIGINT UNSIGNED DEFAULT NULL,
 			converted_submission_id BIGINT UNSIGNED DEFAULT NULL,
 			recovery_emails_sent INT NOT NULL DEFAULT 0,
@@ -74,7 +75,8 @@ class MP_DB {
 			PRIMARY KEY  (id),
 			KEY quiz_id (quiz_id),
 			KEY lead_email (lead_email),
-			KEY converted_submission_id (converted_submission_id)
+			KEY converted_submission_id (converted_submission_id),
+			KEY resume_token (resume_token)
 		) {$charset_collate};
 
 		CREATE TABLE {$payments} (

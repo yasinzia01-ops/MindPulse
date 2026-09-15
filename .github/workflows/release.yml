@@ -1,0 +1,32 @@
+name: Release plugin zip
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build plugin zip
+        run: |
+          mkdir -p build/mindpulse-quiz
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='build' \
+            --exclude='*.md' \
+            --exclude='ralph.sh' \
+            --exclude='.gitignore' \
+            ./ build/mindpulse-quiz/
+          cd build
+          zip -r ../mindpulse-quiz.zip mindpulse-quiz
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mindpulse-quiz.zip
+          generate_release_notes: true

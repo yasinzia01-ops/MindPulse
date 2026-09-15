@@ -142,10 +142,16 @@ class MP_Gateway_Stripe implements MP_Payment_Gateway {
 		$payload        = $request->get_body();
 		$sig_header     = $request->get_header( 'stripe-signature' );
 
-		if ( $webhook_secret ) {
-			if ( ! $sig_header || ! $this->signature_is_valid( $payload, $sig_header, $webhook_secret ) ) {
-				return new WP_Error( 'mp_invalid_signature', __( 'Invalid Stripe signature.', 'mindpulse' ), array( 'status' => 400 ) );
-			}
+		// Refuse to process anything unless a webhook secret is configured
+		// and the signature checks out — never trust an unsigned payload,
+		// even if that means payments stay unconfirmed until Settings is
+		// filled in.
+		if ( ! $webhook_secret ) {
+			return new WP_Error( 'mp_webhook_not_configured', __( 'Stripe webhook signing secret is not configured in MindPulse Settings.', 'mindpulse' ), array( 'status' => 400 ) );
+		}
+
+		if ( ! $sig_header || ! $this->signature_is_valid( $payload, $sig_header, $webhook_secret ) ) {
+			return new WP_Error( 'mp_invalid_signature', __( 'Invalid Stripe signature.', 'mindpulse' ), array( 'status' => 400 ) );
 		}
 
 		$event = json_decode( $payload, true );

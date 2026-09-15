@@ -17,7 +17,7 @@ define( 'MP_VERSION', '1.0.0' );
 define( 'MP_PLUGIN_FILE', __FILE__ );
 define( 'MP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'MP_DB_VERSION', '1.0.0' );
+define( 'MP_DB_VERSION', '1.1.0' );
 
 /**
  * Simple class-map autoloader for MP_* classes.
@@ -92,6 +92,10 @@ add_filter(
  * Bootstrap.
  */
 function mp_init() {
+	if ( get_option( 'mp_db_version' ) !== MP_DB_VERSION ) {
+		MP_DB::create_tables();
+	}
+
 	MP_CPT::register();
 	MP_REST::register();
 	MP_Cron::register();
