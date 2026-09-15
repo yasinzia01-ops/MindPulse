@@ -57,6 +57,19 @@ class MP_REST {
 
 		register_rest_route(
 			'mindpulse/v1',
+			'/submission/(?P<id>\d+)',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'get_submission' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'id' => array( 'required' => true ),
+				),
+			)
+		);
+
+		register_rest_route(
+			'mindpulse/v1',
 			'/payment/webhook',
 			array(
 				'methods'             => 'POST',
@@ -231,12 +244,14 @@ class MP_REST {
 			);
 		}
 
+		$unlocked = ! $is_premium;
+
 		$response = array(
 			'submission_id' => $submission_id,
 			'total_score'   => $result['total_score'],
-			'band'          => $band,
+			'band'          => $unlocked ? $band : self::lock_band( $band ),
 			'is_premium'    => $is_premium,
-			'unlocked'      => ! $is_premium,
+			'unlocked'      => $unlocked,
 		);
 
 		if ( $is_premium ) {
@@ -244,6 +259,58 @@ class MP_REST {
 		}
 
 		return rest_ensure_response( $response );
+	}
+
+	/**
+	 * Fetches a previously stored submission by id, re-scoring its saved
+	 * answers to recover the matching band. Used when a visitor returns
+	 * from a Stripe Checkout redirect (`?mp_submission=ID&mp_paid=`) so
+	 * the frontend can show the now-unlocked result, or offer to retry
+	 * payment if it's still unpaid.
+	 */
+	public static function get_submission( WP_REST_Request $request ) {
+		global $wpdb;
+
+		$id = absint( $request->get_param( 'id' ) );
+		$table = MP_DB::submissions_table();
+		$submission = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
+
+		if ( ! $submission ) {
+			return new WP_Error( 'mp_submission_not_found', __( 'Submission not found.', 'mindpulse' ), array( 'status' => 404 ) );
+		}
+
+		$quiz_data  = MP_CPT::get_quiz_data( $submission->quiz_id );
+		$answers    = json_decode( (string) $submission->answers, true );
+		$result     = MP_Scoring::score( $quiz_data, is_array( $answers ) ? $answers : array() );
+		$band       = $result['band'];
+		$is_premium = ! empty( $quiz_data['settings']['is_premium'] );
+		$unlocked   = ! $is_premium || 'paid' === $submission->payment_status;
+
+		$response = array(
+			'submission_id' => $id,
+			'total_score'   => (int) $submission->total_score,
+			'band'          => $unlocked ? $band : self::lock_band( $band ),
+			'is_premium'    => $is_premium,
+			'unlocked'      => $unlocked,
+		);
+
+		if ( $is_premium && ! $unlocked ) {
+			$response['checkout'] = MP_Payments::create_checkout( $id, $submission->quiz_id, $quiz_data );
+		}
+
+		return rest_ensure_response( $response );
+	}
+
+	/**
+	 * Strips the paid-only fields (description/image/cta) from a band so
+	 * an unpaid premium result can't be read off the network response.
+	 */
+	private static function lock_band( $band ) {
+		if ( ! is_array( $band ) ) {
+			return $band;
+		}
+
+		return array( 'title' => $band['title'] ?? '' );
 	}
 
 	private static function resolve_partner_id( WP_REST_Request $request ) {

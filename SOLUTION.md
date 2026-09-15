@@ -17,17 +17,21 @@ Build and run personality/IQ-style quizzes on WordPress: score a respondent's an
 - **Reviewing results**: MindPulse → Users lists every submission with score/profile/payment status, with a one-click CSV export; MindPulse → Payments lists transactions.
 - **Releases**: pushing a `v*` git tag triggers a GitHub Actions workflow that builds the installable zip correctly (forward-slash paths — no PowerShell `Compress-Archive` pitfall) and attaches it to a GitHub Release.
 
-## What "done" does not mean here
+## What's been verified
 
-This has been built and reviewed carefully, but **it has not yet been activated on a real WordPress site.** Nobody has confirmed:
+Activated on a real (local Docker) WordPress 7.1 + Elementor 4.2 install, not just read for correctness. That process found and fixed two real bugs — a `plugins_loaded`-timing fatal that broke every admin page on activation, and a paywall bypass where the full premium result was readable from the network response even when unpaid (see `PROGRESS.md` for details). After the fixes:
 
-- Activation runs cleanly (table creation, CPT registration, cron scheduling) on an actual WP install.
-- The admin screens render without PHP notices under a live WP + Elementor environment.
-- A quiz can actually be completed end-to-end through the browser, on both the shortcode and the Elementor widget.
-- Stripe checkout and webhook confirmation work against real (test-mode) Stripe keys.
-- The abandon-email cron actually fires and sends on WP-Cron's real timing.
+- Activation runs cleanly: all 4 tables created via `dbDelta`, both CPTs registered, no PHP warnings/notices anywhere, deactivate/reactivate cycle clean.
+- A quiz can be completed end-to-end through a real browser (lead capture → questions → scored result), verified with Playwright.
+- The premium paywall correctly withholds the result until paid, and correctly reveals it after — verified in-browser both ways.
+- Stripe webhook signature verification correctly accepts a validly-signed payload and rejects a forged one.
+- Lead-capture/resume tokens, B2B partner creation + attribution, and CSV export all verified against a live REST API + database.
 
-Treat this as "code-complete, field-untested" rather than "shipped." The first real task for anyone picking this up — human or the Ralph loop — should be installing it on a staging site and working through the verification checklist in `PROGRESS.md`.
+## What's still unverified
+
+- **Real Stripe test-mode keys.** Checkout *session creation* against Stripe's live API wasn't exercised — only the "not configured" error path and the webhook-confirmation side were. Run one real test-mode checkout before sending a premium quiz live.
+- **Real WP-Cron timing.** The abandon-email cron's logic and SQL were verified by invoking it directly; nobody has confirmed WP-Cron's real 15-minute schedule fires it on a live host with working outbound mail.
+- The Elementor widget was verified as registered and rendering, but only the shortcode path was driven through a full browser click-through — worth a quick manual check on the widget too.
 
 ## Known limitations (by design, not bugs)
 

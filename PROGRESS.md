@@ -2,7 +2,7 @@
 
 Running log for the autonomous loop (`RALPH_LOOP.md`) and for humans picking this project back up. Newest entry on top. Each iteration of the loop should append one entry here before stopping, even if the entry is "no changes needed."
 
-## Status: v1 scaffold complete, untested on a live site
+## Status: v1 verified end-to-end on a local WordPress + Elementor install
 
 ## Done
 
@@ -21,9 +21,21 @@ Running log for the autonomous loop (`RALPH_LOOP.md`) and for humans picking thi
 - [x] Fixed: zip packaging — `Compress-Archive` writes backslash paths that break WP's extractor; replaced with a forward-slash-correct zip writer
 - [x] Pushed to GitHub: https://github.com/yasinzia01-ops/MindPulse (public)
 
+## Done (verification pass — activated on a real WP install)
+
+Spun up an isolated WordPress 7.1 + MySQL 8 stack in Docker (`docker-compose.test.yml`, gitignored, not part of the plugin), installed Elementor 4.2, and activated MindPulse against it. Found and fixed two real bugs in the process:
+
+- [x] **Fixed activation-time fatal.** `mp_init()` called `MP_CPT::register()` directly on `plugins_loaded`, but `register_post_type()` needs the `$wp_rewrite` global, which WordPress only creates *after* `plugins_loaded` (right before `init`). Every admin page load fataled with "Call to a member function add_rewrite_tag() on null". Fixed by hooking CPT registration to `init` instead (`mindpulse-quiz.php`).
+- [x] **Fixed a real paywall bypass.** `POST /submit` returned the full band (`description`/`image`/`cta`) in the JSON response even when the quiz was premium and unpaid — the frontend only *hid* it visually, so reading the network response (or calling the REST API directly) got the paid content for free. Added `MP_REST::lock_band()` to strip everything but `title` from the response whenever premium content isn't unlocked yet.
+- [x] **Fixed the post-payment dead end.** Stripe's success/cancel URLs redirect back to the quiz page with `?mp_submission=ID&mp_paid=`, but `quiz-runner.js` never read those params — a visitor who actually paid landed back on question 1 with no way to see their unlocked result. Added `GET /wp-json/mindpulse/v1/submission/{id}` (`MP_REST::get_submission`) which re-scores the stored answers and returns the unlocked band once `payment_status` is `paid`, and wired `quiz-runner.js` to check for `mp_submission` on load and render that result instead of restarting.
+- [x] Verified clean: `dbDelta` creates all 4 tables, both CPTs register, all 7 admin pages render with zero PHP warnings/notices, activate/deactivate/reactivate cycle is clean.
+- [x] Verified in a real headless browser (Playwright): full free-quiz flow (lead capture → 2 questions → scored result) and the premium locked → paid → unlocked flow, both with zero JS console errors.
+- [x] Verified via curl/WP-CLI: lead-capture + resume token round-trip, B2B partner creation + partner-tagged submission, CSV export, Stripe webhook signature verification (valid signature accepted, forged signature rejected, unconfigured secret refused), abandon-cron query logic (correctly selects an aged unconverted lead; only skips incrementing `recovery_emails_sent` because the sandbox has no MTA — not a plugin bug).
+
 ## Not yet done / next up
 
-- [ ] **Never activated on a real WordPress install.** No confirmation that `dbDelta` produces the tables cleanly, that activation doesn't fatal, or that the admin pages render without notices/warnings under a real WP + Elementor environment. This is the top-priority item once a site is available.
+- [ ] **Real Stripe test-mode keys** — checkout *session creation* against Stripe's live API was not exercised (no test API key available in this pass); only the "no key configured" error path and the webhook confirmation side were verified. Do this before the first real premium quiz goes out.
+- [ ] **Real WP-Cron timing** — `MP_Cron::process_abandoned_leads()` was invoked directly and its SQL/logic verified, but nobody has confirmed WP-Cron's real 15-minute schedule actually fires it on a live (non-Docker-sandbox) host with outbound mail working.
 - [ ] No automated tests (no PHPUnit scaffold, no JS tests).
 - [ ] Elementor widget's `get_quiz_options()` re-queries all quizzes on every editor render — fine at small scale, revisit if quiz count grows.
 - [ ] Brain Games is intentionally minimal (see BLUEPRINT.md) — revisit only if the user asks for more than a single embed URL per game.

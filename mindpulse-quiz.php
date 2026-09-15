@@ -96,7 +96,7 @@ function mp_init() {
 		MP_DB::create_tables();
 	}
 
-	MP_CPT::register();
+	add_action( 'init', array( 'MP_CPT', 'register' ) );
 	MP_REST::register();
 	MP_Cron::register();
 	MP_Payments::register();

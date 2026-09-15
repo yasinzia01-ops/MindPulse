@@ -72,7 +72,28 @@
 
 		var leadCaptureFirst = !! ( quiz.settings && quiz.settings.lead_capture_before );
 
-		maybeResume();
+		maybeShowSubmission();
+
+		function maybeShowSubmission() {
+			var submissionId = getUrlParam( 'mp_submission' );
+
+			if ( ! submissionId ) {
+				maybeResume();
+				return;
+			}
+
+			container.innerHTML = '<div class="mp-quiz__loading">Loading your result…</div>';
+
+			apiGet( '/submission/' + encodeURIComponent( submissionId ), {} ).then( function ( res ) {
+				if ( ! res || res.code ) {
+					maybeResume();
+					return;
+				}
+				renderResult( res );
+			} ).catch( function () {
+				maybeResume();
+			} );
+		}
 
 		function maybeResume() {
 			var resumeToken = getUrlParam( 'mp_resume' );
