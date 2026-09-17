@@ -148,6 +148,14 @@ class MP_CPT {
 	}
 
 	public static function save_quiz_data( $quiz_id, array $data ) {
-		update_post_meta( $quiz_id, '_mp_quiz_data', wp_json_encode( $data ) );
+		// update_post_meta() always runs the stored value through
+		// wp_unslash() (it expects raw $_POST-style data). A freshly
+		// wp_json_encode()'d string legitimately contains \n / \t / \"
+		// escape sequences that aren't "slashed" POST data, so without
+		// this wp_slash() that unconditional unslash corrupts them --
+		// e.g. every \n in a multi-line field (Custom CSS, descriptions,
+		// thank-you message, ...) silently loses its backslash and
+		// becomes a bare "n" once stored.
+		update_post_meta( $quiz_id, '_mp_quiz_data', wp_slash( wp_json_encode( $data ) ) );
 	}
 }
