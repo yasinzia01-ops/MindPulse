@@ -43,6 +43,13 @@ Spun up an isolated WordPress 7.1 + MySQL 8 stack in Docker (`docker-compose.tes
 - [x] Verified in a real headless browser (Playwright): full free-quiz flow (lead capture → 2 questions → scored result) and the premium locked → paid → unlocked flow, both with zero JS console errors.
 - [x] Verified via curl/WP-CLI: lead-capture + resume token round-trip, B2B partner creation + partner-tagged submission, CSV export, Stripe webhook signature verification (valid signature accepted, forged signature rejected, unconfigured secret refused), abandon-cron query logic (correctly selects an aged unconverted lead; only skips incrementing `recovery_emails_sent` because the sandbox has no MTA — not a plugin bug).
 
+## Done (this pass — result download)
+
+- [x] **"Download PDF" / "Download Image" buttons on the report stage** (`renderReport()` in `public/js/quiz-runner.js`). Renders the result panel to a canvas with html2canvas, then either saves it straight as a PNG or embeds it (JPEG-compressed, ~70KB instead of several MB for an uncompressed PNG embed) into an A4-proportioned PDF via jsPDF — both entirely client-side. Both libraries load as CDN-hosted script dependencies of `mp-quiz-runner` (`mindpulse-quiz.php`), so the B2B embed page picks them up automatically too (`wp_print_scripts()` resolves dependencies).
+- [x] Only appears on the unlocked/free report — never on the locked preview, since there's nothing real to download yet.
+- [x] Verified live: both downloads produce valid, correctly-sized files (`file` magic-byte check on the PDF, size sanity-check on the PNG) with zero PHP/JS errors.
+- [ ] **Known limitation**: if a band image or logo is hosted somewhere without CORS headers, html2canvas can fail to capture it (or throw) — that's a limitation of the image's hosting, not fixable from this plugin. The download buttons show an alert and re-enable themselves if capture fails, rather than hanging.
+
 ## Not yet done / next up
 
 - [ ] **Real Stripe test-mode keys** — checkout *session creation* against Stripe's live API was not exercised (no test API key available in this pass); only the "no key configured" error path and the webhook confirmation side were verified. Do this before the first real premium quiz goes out.

@@ -645,7 +645,80 @@
 			}
 
 			container.appendChild( wrap );
+			// Appended as a sibling of `wrap`, not inside it, so the
+			// buttons themselves never show up in the captured PDF/image.
+			renderDownloadButtons( container, wrap );
 			notifyParentHeight();
+		}
+
+		function renderDownloadButtons( container, target ) {
+			var row = el( 'div', 'mp-quiz__download-row' );
+
+			var pdfBtn = el( 'button', 'mp-btn mp-btn--secondary', 'Download PDF' );
+			pdfBtn.type = 'button';
+			pdfBtn.addEventListener( 'click', function () {
+				downloadReport( 'pdf', target, pdfBtn );
+			} );
+
+			var imgBtn = el( 'button', 'mp-btn mp-btn--secondary', 'Download Image' );
+			imgBtn.type = 'button';
+			imgBtn.addEventListener( 'click', function () {
+				downloadReport( 'png', target, imgBtn );
+			} );
+
+			row.appendChild( pdfBtn );
+			row.appendChild( imgBtn );
+			container.appendChild( row );
+		}
+
+		/**
+		 * Renders `target` to a canvas with html2canvas and either saves it
+		 * straight as a PNG or wraps it in an A4-proportioned PDF page via
+		 * jsPDF. Both libraries are loaded as script dependencies of this
+		 * one (mindpulse-quiz.php); everything happens client-side, no
+		 * server rendering involved. An externally-hosted band/logo image
+		 * without CORS headers can make html2canvas fail to capture it (or
+		 * throw) -- that's a hosting limitation of the image URL, not
+		 * something fixable from here.
+		 */
+		function downloadReport( format, target, triggerBtn ) {
+			if ( typeof html2canvas === 'undefined' ) {
+				window.alert( 'The download feature could not load. Please check your connection and try again.' );
+				return;
+			}
+
+			var originalLabel = triggerBtn.textContent;
+			triggerBtn.disabled = true;
+			triggerBtn.textContent = 'Preparing…';
+
+			html2canvas( target, { useCORS: true, backgroundColor: '#ffffff', scale: 2 } ).then( function ( canvas ) {
+				var filename = 'mindpulse-result-' + Date.now();
+
+				if ( 'png' === format ) {
+					var link = document.createElement( 'a' );
+					link.download = filename + '.png';
+					link.href = canvas.toDataURL( 'image/png' );
+					link.click();
+				} else {
+					var jsPDFCtor = ( window.jspdf && window.jspdf.jsPDF ) || window.jsPDF;
+					if ( ! jsPDFCtor ) {
+						throw new Error( 'jsPDF not loaded' );
+					}
+					var pdfWidth = 210; // A4 width in mm
+					var pdfHeight = ( canvas.height * pdfWidth ) / canvas.width;
+					var pdf = new jsPDFCtor( { unit: 'mm', format: [ pdfWidth, pdfHeight ] } );
+					// JPEG at 0.9 keeps the PDF a few hundred KB instead of
+					// several MB -- a lossless PNG embed is massive overkill
+					// for a result page that's mostly flat color and text.
+					pdf.addImage( canvas.toDataURL( 'image/jpeg', 0.9 ), 'JPEG', 0, 0, pdfWidth, pdfHeight );
+					pdf.save( filename + '.pdf' );
+				}
+			} ).catch( function ( err ) {
+				window.alert( 'Sorry, we couldn\'t generate your download. Please try again, or take a screenshot instead.' );
+			} ).finally( function () {
+				triggerBtn.disabled = false;
+				triggerBtn.textContent = originalLabel;
+			} );
 		}
 
 		function renderCertificate( result, cfg ) {

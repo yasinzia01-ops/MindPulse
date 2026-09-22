@@ -345,3 +345,27 @@
 	color: #9aa1bb;
 	margin-top: 16px;
 }
+
+.mp-quiz__download-row {
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+	margin-top: 20px;
+	flex-wrap: wrap;
+}
+
+.mp-btn--secondary {
+	background: #fff;
+	border-color: #d1d5db;
+	color: #4f46e5;
+}
+
+.mp-btn--secondary:hover {
+	border-color: #4f46e5;
+	background: #eef2ff;
+}
+
+.mp-btn--secondary:disabled {
+	opacity: 0.6;
+	cursor: default;
+}

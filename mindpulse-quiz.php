@@ -123,7 +123,14 @@ add_action( 'plugins_loaded', 'mp_init' );
  */
 function mp_register_frontend_assets() {
 	wp_register_style( 'mp-frontend', MP_PLUGIN_URL . 'public/css/frontend.css', array(), MP_VERSION );
-	wp_register_script( 'mp-quiz-runner', MP_PLUGIN_URL . 'public/js/quiz-runner.js', array(), MP_VERSION, true );
+
+	// Loaded so the report stage's "Download PDF / Download Image" buttons
+	// can render the result to a canvas (html2canvas) and wrap it in a PDF
+	// (jsPDF) entirely client-side -- no server-side rendering dependency.
+	wp_register_script( 'mp-html2canvas', 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', array(), '1.4.1', true );
+	wp_register_script( 'mp-jspdf', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', array(), '2.5.1', true );
+
+	wp_register_script( 'mp-quiz-runner', MP_PLUGIN_URL . 'public/js/quiz-runner.js', array( 'mp-html2canvas', 'mp-jspdf' ), MP_VERSION, true );
 	wp_localize_script(
 		'mp-quiz-runner',
 		'MindPulseConfig',
