@@ -3,7 +3,7 @@
  * Plugin Name: MindPulse
  * Plugin URI:  https://example.com/mindpulse
  * Description: Build IQ, personality and aptitude quizzes with point-band scoring, result profiles, lead capture, abandon-cart email recovery, payment-gated results, and B2B embeds. Works as a shortcode or Elementor widget.
- * Version:     1.0.0
+ * Version:     1.2.1
  * Author:      MindPulse
  * Text Domain: mindpulse
  * Requires PHP: 7.4
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MP_VERSION', '1.0.0' );
+define( 'MP_VERSION', '1.2.1' );
 define( 'MP_PLUGIN_FILE', __FILE__ );
 define( 'MP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

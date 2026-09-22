@@ -50,6 +50,11 @@ Spun up an isolated WordPress 7.1 + MySQL 8 stack in Docker (`docker-compose.tes
 - [x] Verified live: both downloads produce valid, correctly-sized files (`file` magic-byte check on the PDF, size sanity-check on the PNG) with zero PHP/JS errors.
 - [ ] **Known limitation**: if a band image or logo is hosted somewhere without CORS headers, html2canvas can fail to capture it (or throw) — that's a limitation of the image's hosting, not fixable from this plugin. The download buttons show an alert and re-enable themselves if capture fails, rather than hanging.
 
+## Done (this pass — asset cache-busting fix)
+
+- [x] **Fixed: `MP_VERSION` never changed across any release** (`mindpulse-quiz.php` had it hardcoded to `'1.0.0'` since the very first commit). Every enqueued script/style URL (`quiz-runner.js?ver=...`, `frontend.css?ver=...`) therefore never changed either, so any caching layer between the origin and a visitor's browser (server-side page/object cache, a CDN, even the browser's own HTTP cache under a `Cache-Control: max-age` header) that had already cached that exact URL kept serving the pre-update file indefinitely — regardless of how many times the plugin itself was updated. This is what caused a real "the download buttons aren't showing" report on a live site running v1.2.0's code correctly on disk (confirmed byte-for-byte via diff) — purging caches is a workaround, but the actual fix is bumping `MP_VERSION` on every release so the URL itself changes and forces a fresh fetch. Bumped to `1.2.1` and verified locally that the served URL changes accordingly.
+- [ ] **Process reminder**: bump `MP_VERSION` (and the `Version:` header) on every future release, not just when there's a cache complaint.
+
 ## Not yet done / next up
 
 - [ ] **Real Stripe test-mode keys** — checkout *session creation* against Stripe's live API was not exercised (no test API key available in this pass); only the "no key configured" error path and the webhook confirmation side were verified. Do this before the first real premium quiz goes out.
