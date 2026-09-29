@@ -72,6 +72,12 @@ Spun up an isolated WordPress 7.1 + MySQL 8 stack in Docker (`docker-compose.tes
 - [x] **Downloaded filename includes the visitor's name** (slugified, e.g. `mindpulse-result-jane-doe.pdf`) once known, falling back to a timestamp before that.
 - [x] Verified live: auto-advance timing, Previous preserving the highlight and the score correctly reflecting a changed answer, logo rendering, computed padding, and the certificate name + filename both updating correctly after the download gate. Zero PHP/JS errors (the placeholder test image failing to load was a Docker-sandbox network limitation, not a plugin bug — and the download still succeeded despite it, confirming html2canvas degrades gracefully on a failed image rather than blocking the whole capture). Bumped to `1.3.1`.
 
+## Done (this pass — download padding fix, Next button restored)
+
+- [x] **Fixed: downloaded PDF/PNG had no padding at all**, confirmed from a real downloaded file the user sent back. Root cause: the html2canvas capture target is `.mp-quiz__result` specifically (deliberately a level below `.mp-quiz`, so the Download buttons themselves never show up in the captured file) — the padding added last pass was only on the outer `.mp-quiz`, which isn't part of what gets captured. Added padding directly on `.mp-quiz__result`. The logo issue reported in the same message wasn't a bug: `report.logo_url` is opt-in and empty by default, so nothing shows until an admin sets it in Report Settings.
+- [x] **Next button restored, no longer compulsory.** User feedback: keep the Next button visible, just don't require clicking it. `renderQuestion()` now shows both Previous and Next always; selecting an option still auto-advances after ~300ms same as before, but Next (enabled once something's picked) fires the same `advance()` immediately for anyone who doesn't want to wait.
+- [x] Verified live: Next button present and disabled until a selection, auto-advance still works untouched (~380ms), manual Next click advances near-instantly (~270ms, no artificial wait), and `.mp-quiz__result`'s computed padding is correctly `28px 24px` (the actual PDF/PNG capture target, not just the outer container). Bumped to `1.3.2`.
+
 ## Not yet done / next up
 
 - [ ] **Real Stripe test-mode keys** — checkout *session creation* against Stripe's live API was not exercised (no test API key available in this pass); only the "no key configured" error path and the webhook confirmation side were verified. Do this before the first real premium quiz goes out.

@@ -369,6 +369,13 @@
 
 			var selectedIndex = state.answers[ question.id ];
 
+			function advance() {
+				clearPendingAdvance();
+				state.step++;
+				captureLead();
+				renderQuestionFlow();
+			}
+
 			var list = el( 'div', 'mp-quiz__options' );
 			( question.options || [] ).forEach( function ( option, optIndex ) {
 				var isSelected = selectedIndex === optIndex;
@@ -377,16 +384,12 @@
 				btn.addEventListener( 'click', function () {
 					clearPendingAdvance();
 					state.answers[ question.id ] = optIndex;
-					renderQuestion( question, index ); // shows the highlight immediately
+					renderQuestion( question, index ); // shows the highlight + enables Next immediately
 					// Auto-advances after a brief pause so the visitor sees
-					// which option they picked before the quiz moves on --
-					// still automatic (no button to press), just not an
-					// instant jump-cut.
-					pendingAdvanceTimeout = setTimeout( function () {
-						state.step++;
-						captureLead();
-						renderQuestionFlow();
-					}, 300 );
+					// which option they picked before the quiz moves on.
+					// Not compulsory -- the Next button below does the same
+					// thing immediately, for anyone who doesn't want to wait.
+					pendingAdvanceTimeout = setTimeout( advance, 300 );
 				} );
 				list.appendChild( btn );
 			} );
@@ -394,19 +397,26 @@
 			wrap.appendChild( list );
 
 			var hasPrevious = index > 0 || leadCaptureFirst;
-			if ( hasPrevious ) {
-				var nav = el( 'div', 'mp-quiz__nav' );
-				var prevBtn = el( 'button', 'mp-btn mp-btn--secondary', '← Previous' );
-				prevBtn.type = 'button';
-				prevBtn.addEventListener( 'click', function () {
-					clearPendingAdvance();
-					state.step--;
-					renderQuestionFlow();
-				} );
-				nav.appendChild( prevBtn );
-				wrap.appendChild( nav );
-			}
+			var nav = el( 'div', 'mp-quiz__nav' );
 
+			var prevBtn = el( 'button', 'mp-btn mp-btn--secondary', '← Previous' );
+			prevBtn.type = 'button';
+			prevBtn.disabled = ! hasPrevious;
+			prevBtn.addEventListener( 'click', function () {
+				clearPendingAdvance();
+				state.step--;
+				renderQuestionFlow();
+			} );
+			nav.appendChild( prevBtn );
+
+			var isLast = index === quiz.questions.length - 1;
+			var nextBtn = el( 'button', 'mp-btn mp-btn--primary', isLast ? 'See Results' : 'Next →' );
+			nextBtn.type = 'button';
+			nextBtn.disabled = selectedIndex === undefined;
+			nextBtn.addEventListener( 'click', advance );
+			nav.appendChild( nextBtn );
+
+			wrap.appendChild( nav );
 			container.appendChild( wrap );
 		}
 
