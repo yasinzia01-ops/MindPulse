@@ -350,8 +350,12 @@ class MP_REST {
 				'unlocked'      => $unlocked,
 				// The visitor's own page state (name typed into the lead
 				// form) doesn't exist yet on this fresh page load, so hand
-				// their stored name back for the certificate/report.
+				// their stored name/email back -- name for the certificate/
+				// report, email so the download button's email-gate is
+				// skipped when it's already known (e.g. a paid submission
+				// where email was captured before checkout).
 				'name'          => $submission->lead_name,
+				'email'         => $submission->lead_email,
 			)
 		);
 

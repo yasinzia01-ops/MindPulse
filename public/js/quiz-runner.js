@@ -243,13 +243,11 @@
 				return;
 			}
 
-			var deferEmailToStructuredCapture = !! ( quiz.email_capture && quiz.email_capture.enabled );
-
-			if ( ! leadCaptureFirst && ! state.email && ! deferEmailToStructuredCapture ) {
-				renderLeadCapture( { onDone: renderQuestionFlow } );
-				return;
-			}
-
+			// Personal info is no longer forced between the last question and
+			// scoring: a free/unlocked quiz goes straight to the report, and
+			// name/email (if not already known from an upfront lead-capture
+			// screen the admin turned on) is only asked when the visitor
+			// actually clicks Download PDF/Image -- see downloadReport().
 			renderProcessingOrSubmit();
 		}
 
@@ -360,20 +358,50 @@
 			wrap.appendChild( el( 'div', 'mp-quiz__progress', ( index + 1 ) + ' / ' + quiz.questions.length ) );
 			wrap.appendChild( el( 'h3', '', escapeHtml( question.text ) ) );
 
+			var selectedIndex = state.answers[ question.id ];
+
 			var list = el( 'div', 'mp-quiz__options' );
 			( question.options || [] ).forEach( function ( option, optIndex ) {
-				var btn = el( 'button', 'mp-btn mp-btn--option', escapeHtml( option.label ) );
+				var isSelected = selectedIndex === optIndex;
+				var btn = el( 'button', 'mp-btn mp-btn--option' + ( isSelected ? ' is-selected' : '' ), escapeHtml( option.label ) );
 				btn.type = 'button';
 				btn.addEventListener( 'click', function () {
+					// Selecting no longer auto-advances -- it just marks the
+					// answer and re-renders so the Next button enables and
+					// the choice highlights, so a visitor can change their
+					// mind before moving on.
 					state.answers[ question.id ] = optIndex;
-					state.step++;
-					captureLead();
-					renderQuestionFlow();
+					renderQuestion( question, index );
 				} );
 				list.appendChild( btn );
 			} );
 
 			wrap.appendChild( list );
+
+			var nav = el( 'div', 'mp-quiz__nav' );
+
+			var hasPrevious = index > 0 || leadCaptureFirst;
+			var prevBtn = el( 'button', 'mp-btn mp-btn--secondary', '← Previous' );
+			prevBtn.type = 'button';
+			prevBtn.disabled = ! hasPrevious;
+			prevBtn.addEventListener( 'click', function () {
+				state.step--;
+				renderQuestionFlow();
+			} );
+			nav.appendChild( prevBtn );
+
+			var isLast = index === quiz.questions.length - 1;
+			var nextBtn = el( 'button', 'mp-btn mp-btn--primary', isLast ? 'See Results' : 'Next →' );
+			nextBtn.type = 'button';
+			nextBtn.disabled = selectedIndex === undefined;
+			nextBtn.addEventListener( 'click', function () {
+				state.step++;
+				captureLead();
+				renderQuestionFlow();
+			} );
+			nav.appendChild( nextBtn );
+
+			wrap.appendChild( nav );
 			container.appendChild( wrap );
 		}
 
@@ -467,6 +495,9 @@
 			state.lastResult = result;
 			if ( result.name && ! state.name ) {
 				state.name = result.name;
+			}
+			if ( result.email && ! state.email ) {
+				state.email = result.email;
 			}
 
 			if ( result.is_premium && ! result.unlocked ) {
@@ -672,6 +703,64 @@
 		}
 
 		/**
+		 * Personal info is captured here -- at the moment a visitor
+		 * actually wants to keep their result -- rather than blocking the
+		 * quiz itself. If we already know their email (an upfront
+		 * lead-capture screen the admin turned on, or a paid submission
+		 * where it was captured before checkout), skip straight to the
+		 * download; otherwise show a small inline form first.
+		 */
+		function downloadReport( format, target, triggerBtn ) {
+			if ( state.email ) {
+				performDownload( format, target, triggerBtn );
+				return;
+			}
+			showDownloadEmailGate( format, target, triggerBtn );
+		}
+
+		function showDownloadEmailGate( format, target, triggerBtn ) {
+			var row = triggerBtn.parentNode;
+
+			if ( row.parentNode.querySelector( '.mp-quiz__email-gate' ) ) {
+				return; // already open (from the other download button)
+			}
+
+			var gate = el( 'div', 'mp-quiz__email-gate' );
+			gate.appendChild( el( 'p', 'mp-quiz__email-gate-label', 'Enter your name and email to download your result.' ) );
+
+			var nameInput = el( 'input' );
+			nameInput.type = 'text';
+			nameInput.placeholder = 'Your name';
+			nameInput.className = 'mp-input mp-input--name';
+
+			var emailInput = el( 'input' );
+			emailInput.type = 'email';
+			emailInput.placeholder = 'Your email';
+			emailInput.required = true;
+			emailInput.className = 'mp-input mp-input--email';
+
+			var confirmBtn = el( 'button', 'mp-btn mp-btn--primary', 'Continue to Download' );
+			confirmBtn.type = 'button';
+			confirmBtn.addEventListener( 'click', function () {
+				if ( ! emailInput.value || emailInput.validity.typeMismatch ) {
+					emailInput.classList.add( 'mp-input--error' );
+					return;
+				}
+				state.name = nameInput.value;
+				state.email = emailInput.value;
+				captureLead();
+				gate.remove();
+				performDownload( format, target, triggerBtn );
+			} );
+
+			gate.appendChild( nameInput );
+			gate.appendChild( emailInput );
+			gate.appendChild( confirmBtn );
+			row.parentNode.insertBefore( gate, row.nextSibling );
+			notifyParentHeight();
+		}
+
+		/**
 		 * Renders `target` to a canvas with html2canvas and either saves it
 		 * straight as a PNG or wraps it in an A4-proportioned PDF page via
 		 * jsPDF. Both libraries are loaded as script dependencies of this
@@ -681,7 +770,7 @@
 		 * throw) -- that's a hosting limitation of the image URL, not
 		 * something fixable from here.
 		 */
-		function downloadReport( format, target, triggerBtn ) {
+		function performDownload( format, target, triggerBtn ) {
 			if ( typeof html2canvas === 'undefined' ) {
 				window.alert( 'The download feature could not load. Please check your connection and try again.' );
 				return;
