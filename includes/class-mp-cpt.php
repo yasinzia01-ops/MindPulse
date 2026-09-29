@@ -117,6 +117,7 @@ class MP_CPT {
 					'price_caption' => '',
 				),
 				'report'        => array(
+					'logo_url'             => '',
 					'hero_title'           => '',
 					'hero_subtitle'        => '',
 					'show_iq_style'        => false,

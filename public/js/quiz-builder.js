@@ -460,6 +460,7 @@
 				benefits: checkoutBenefits.serialize(),
 			},
 			report: {
+				logo_url: val( 'report_logo_url' ),
 				hero_title: val( 'report_hero_title' ),
 				hero_subtitle: val( 'report_hero_subtitle' ),
 				show_iq_style: checked( 'report_show_iq_style' ),

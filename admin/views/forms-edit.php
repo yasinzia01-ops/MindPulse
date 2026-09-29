@@ -179,6 +179,7 @@ $settings = $data['settings'];
 				<!-- Report Settings -->
 				<div class="mp-tab-panel" data-tab="report">
 					<table class="form-table">
+						<tr><th><?php esc_html_e( 'Logo URL', 'mindpulse' ); ?></th><td><input type="text" id="report_logo_url" class="regular-text" placeholder="https://…" value="<?php echo esc_attr( $data['report']['logo_url'] ?? '' ); ?>" /></td></tr>
 						<tr><th><?php esc_html_e( 'Hero title', 'mindpulse' ); ?></th><td><input type="text" id="report_hero_title" class="large-text" value="<?php echo esc_attr( $data['report']['hero_title'] ?? '' ); ?>" /></td></tr>
 						<tr><th><?php esc_html_e( 'Hero subtitle', 'mindpulse' ); ?></th><td><input type="text" id="report_hero_subtitle" class="large-text" value="<?php echo esc_attr( $data['report']['hero_subtitle'] ?? '' ); ?>" /></td></tr>
 						<tr>

@@ -116,6 +116,14 @@
 
 		var leadCaptureFirst = !! ( quiz.settings && quiz.settings.lead_capture_before );
 		var activeInterval = null;
+		var pendingAdvanceTimeout = null;
+
+		function clearPendingAdvance() {
+			if ( pendingAdvanceTimeout ) {
+				clearTimeout( pendingAdvanceTimeout );
+				pendingAdvanceTimeout = null;
+			}
+		}
 
 		function clearActiveInterval() {
 			if ( activeInterval ) {
@@ -226,6 +234,7 @@
 
 		function renderQuestionFlow() {
 			clearActiveInterval();
+			clearPendingAdvance();
 			container.innerHTML = '';
 
 			if ( leadCaptureFirst && state.step === 0 ) {
@@ -366,42 +375,38 @@
 				var btn = el( 'button', 'mp-btn mp-btn--option' + ( isSelected ? ' is-selected' : '' ), escapeHtml( option.label ) );
 				btn.type = 'button';
 				btn.addEventListener( 'click', function () {
-					// Selecting no longer auto-advances -- it just marks the
-					// answer and re-renders so the Next button enables and
-					// the choice highlights, so a visitor can change their
-					// mind before moving on.
+					clearPendingAdvance();
 					state.answers[ question.id ] = optIndex;
-					renderQuestion( question, index );
+					renderQuestion( question, index ); // shows the highlight immediately
+					// Auto-advances after a brief pause so the visitor sees
+					// which option they picked before the quiz moves on --
+					// still automatic (no button to press), just not an
+					// instant jump-cut.
+					pendingAdvanceTimeout = setTimeout( function () {
+						state.step++;
+						captureLead();
+						renderQuestionFlow();
+					}, 300 );
 				} );
 				list.appendChild( btn );
 			} );
 
 			wrap.appendChild( list );
 
-			var nav = el( 'div', 'mp-quiz__nav' );
-
 			var hasPrevious = index > 0 || leadCaptureFirst;
-			var prevBtn = el( 'button', 'mp-btn mp-btn--secondary', '← Previous' );
-			prevBtn.type = 'button';
-			prevBtn.disabled = ! hasPrevious;
-			prevBtn.addEventListener( 'click', function () {
-				state.step--;
-				renderQuestionFlow();
-			} );
-			nav.appendChild( prevBtn );
+			if ( hasPrevious ) {
+				var nav = el( 'div', 'mp-quiz__nav' );
+				var prevBtn = el( 'button', 'mp-btn mp-btn--secondary', '← Previous' );
+				prevBtn.type = 'button';
+				prevBtn.addEventListener( 'click', function () {
+					clearPendingAdvance();
+					state.step--;
+					renderQuestionFlow();
+				} );
+				nav.appendChild( prevBtn );
+				wrap.appendChild( nav );
+			}
 
-			var isLast = index === quiz.questions.length - 1;
-			var nextBtn = el( 'button', 'mp-btn mp-btn--primary', isLast ? 'See Results' : 'Next →' );
-			nextBtn.type = 'button';
-			nextBtn.disabled = selectedIndex === undefined;
-			nextBtn.addEventListener( 'click', function () {
-				state.step++;
-				captureLead();
-				renderQuestionFlow();
-			} );
-			nav.appendChild( nextBtn );
-
-			wrap.appendChild( nav );
 			container.appendChild( wrap );
 		}
 
@@ -631,6 +636,13 @@
 			var band = result.band || {};
 			var cfg = quiz.report || {};
 
+			if ( cfg.logo_url ) {
+				var logo = el( 'img', 'mp-quiz__report-logo' );
+				logo.src = cfg.logo_url;
+				logo.alt = '';
+				wrap.appendChild( logo );
+			}
+
 			if ( cfg.hero_title || cfg.hero_subtitle ) {
 				if ( cfg.hero_title ) wrap.appendChild( el( 'h1', '', escapeHtml( cfg.hero_title ) ) );
 				if ( cfg.hero_subtitle ) wrap.appendChild( el( 'p', 'mp-quiz__hero-subtitle', escapeHtml( cfg.hero_subtitle ) ) );
@@ -749,6 +761,14 @@
 				state.name = nameInput.value;
 				state.email = emailInput.value;
 				captureLead();
+				// The certificate was drawn before we knew the visitor's
+				// name (personal info is only ever asked here, at download
+				// time), so it still shows the "You" placeholder -- update
+				// it in place before capturing the canvas.
+				var certName = target.querySelector( '.mp-quiz__certificate-name' );
+				if ( certName && state.name ) {
+					certName.textContent = state.name;
+				}
 				gate.remove();
 				performDownload( format, target, triggerBtn );
 			} );
@@ -770,6 +790,14 @@
 		 * throw) -- that's a hosting limitation of the image URL, not
 		 * something fixable from here.
 		 */
+		function buildDownloadFilename() {
+			var slug = ( state.name || '' )
+				.toLowerCase()
+				.replace( /[^a-z0-9]+/g, '-' )
+				.replace( /^-+|-+$/g, '' );
+			return slug ? 'mindpulse-result-' + slug : 'mindpulse-result-' + Date.now();
+		}
+
 		function performDownload( format, target, triggerBtn ) {
 			if ( typeof html2canvas === 'undefined' ) {
 				window.alert( 'The download feature could not load. Please check your connection and try again.' );
@@ -781,7 +809,7 @@
 			triggerBtn.textContent = 'Preparing…';
 
 			html2canvas( target, { useCORS: true, backgroundColor: '#ffffff', scale: 2 } ).then( function ( canvas ) {
-				var filename = 'mindpulse-result-' + Date.now();
+				var filename = buildDownloadFilename();
 
 				if ( 'png' === format ) {
 					var link = document.createElement( 'a' );

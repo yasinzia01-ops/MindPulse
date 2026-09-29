@@ -63,6 +63,15 @@ Spun up an isolated WordPress 7.1 + MySQL 8 stack in Docker (`docker-compose.tes
 - [x] Verified live: full click-through (select → highlight → Next; Previous → answer still highlighted → change it → Next; final question → report with no email prompt anywhere → Download PDF → gate appears → submit → download fires → Download Image → no gate, already known) with the submission's `lead_name`/`lead_email` correctly attached in the database and zero PHP/JS errors. Also re-ran the premium quiz's preview → structured email capture → checkout path to confirm it's unaffected.
 - [x] Bumped to `1.3.0`.
 
+## Done (this pass — report design + auto-advance + certificate name)
+
+- [x] **Report logo.** New `report.logo_url` field (Report Settings tab), rendered at the top of the report above the hero title.
+- [x] **`.mp-quiz` no longer touches the page edges by default.** Added `padding: 28px 24px` to the base container so every stage (not just the report) has breathing room out of the box, without depending on the admin's own Custom CSS.
+- [x] **Auto-advance is back, but with Previous kept.** Selecting an option highlights it and auto-advances after a short pause (300ms, so the visitor sees what they picked) instead of requiring a separate Next click — the explicit Next button from the previous pass is gone; Previous stays, so a visitor can still go back and change an answer.
+- [x] **Certificate now shows the real name on download.** The certificate on the page still shows a "You" placeholder before personal info is known (matches the deferred-capture design — nothing forces a name earlier), but the moment the download's email-gate is filled in, the certificate's name element is updated in place *before* the canvas is captured, so the downloaded PDF/PNG shows the real name.
+- [x] **Downloaded filename includes the visitor's name** (slugified, e.g. `mindpulse-result-jane-doe.pdf`) once known, falling back to a timestamp before that.
+- [x] Verified live: auto-advance timing, Previous preserving the highlight and the score correctly reflecting a changed answer, logo rendering, computed padding, and the certificate name + filename both updating correctly after the download gate. Zero PHP/JS errors (the placeholder test image failing to load was a Docker-sandbox network limitation, not a plugin bug — and the download still succeeded despite it, confirming html2canvas degrades gracefully on a failed image rather than blocking the whole capture). Bumped to `1.3.1`.
+
 ## Not yet done / next up
 
 - [ ] **Real Stripe test-mode keys** — checkout *session creation* against Stripe's live API was not exercised (no test API key available in this pass); only the "no key configured" error path and the webhook confirmation side were verified. Do this before the first real premium quiz goes out.

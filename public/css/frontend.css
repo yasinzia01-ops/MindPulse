@@ -2,6 +2,15 @@
 	max-width: 640px;
 	margin: 0 auto;
 	font-family: inherit;
+	padding: 28px 24px;
+	box-sizing: border-box;
+}
+
+.mp-quiz__report-logo {
+	display: block;
+	max-height: 48px;
+	max-width: 200px;
+	margin: 0 0 20px;
 }
 
 .mp-quiz__loading,
